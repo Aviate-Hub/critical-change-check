@@ -11,10 +11,17 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 2  # Fetch enough history to find the base branch
+
+    - name: Get base branch
+      id: vars
+      run: echo "BASE_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
 
     - name: Run critical changes check
       run: |
-        git diff HEAD^ HEAD > changes.diff
+        git fetch origin $BASE_BRANCH
+        git diff origin/$BASE_BRANCH...HEAD > changes.diff
         critical_patterns=("iptables" "password" "ssh-key" "secret" "token")
         for pattern in "${critical_patterns[@]}"; do
           if grep -q -E "$pattern" changes.diff; then
@@ -35,3 +42,4 @@ jobs:
             repo: context.repo.repo,
             body: "🚨 Critical changes detected in this PR. Please review the changes carefully."
           })
+
