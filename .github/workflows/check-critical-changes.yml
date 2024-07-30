@@ -35,6 +35,7 @@ jobs:
       if: failure()
       uses: actions/github-script@v3
       with:
+        github-token: ${{ secrets.PAT }}
         script: |
           github.issues.createComment({
             issue_number: context.issue.number,
