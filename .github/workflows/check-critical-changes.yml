@@ -1,0 +1,37 @@
+name: Check Critical Changes
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check_changes:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Run critical changes check
+      run: |
+        git diff HEAD^ HEAD > changes.diff
+        critical_patterns=("iptables" "password" "ssh-key" "secret" "token")
+        for pattern in "${critical_patterns[@]}"; do
+          if grep -q -E "$pattern" changes.diff; then
+            echo "Critical change detected: $pattern"
+            exit 1
+          fi
+        done
+        echo "No critical changes found."
+
+    - name: Post comment if critical changes are detected
+      if: failure()
+      uses: actions/github-script@v3
+      with:
+        script: |
+          github.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: "🚨 Critical changes detected in this PR. Please review the changes carefully."
+          })
